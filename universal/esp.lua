@@ -1,7 +1,6 @@
 -- made by keta
 -- documentation: https://docs.sunc.su/Drawing/
-if getgenv().KETA_ESP then return end
-getgenv().KETA_ESP = true
+if getgenv().library then return getgenv().library end
 
 local library = {}
 
@@ -322,5 +321,7 @@ run_service:BindToRenderStep("esp_update", Enum.RenderPriority.Camera.Value + 1,
         end
     end
 end)
+
+getgenv().library = library
 
 return library

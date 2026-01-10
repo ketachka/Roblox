@@ -111,6 +111,7 @@ function esp_object.new(player)
     self.drawings.distance.Outline = true
     self.drawings.distance.ZIndex = 3
 
+    -- caching character for existing players
     self:cache_character()
     return self
 end
@@ -276,8 +277,12 @@ function manager.add_player(player)
     if manager.entities[player] then return end
     manager.entities[player] = esp_object.new(player)
     
-    player.CharacterAdded:Connect(function()
-        if manager.entities[player] then
+    player.CharacterAdded:Connect(function(character)
+        task.wait()
+        local root = character:WaitForChild("HumanoidRootPart")
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        if root and humanoid and manager.entities[player] then
             manager.entities[player]:cache_character()
         end
     end)

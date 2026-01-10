@@ -1,5 +1,8 @@
 -- made by keta
 -- documentation: https://docs.sunc.su/Drawing/
+if getgenv().KETA_ESP then return end
+getgenv().KETA_ESP = true
+
 local library = {}
 
 library.config = {
@@ -71,7 +74,7 @@ esp_object.__index = esp_object
 function esp_object.new(player)
     local self = setmetatable({}, esp_object)
     self.player = player
-    self.char = nil
+    self.character = nil
     self.root = nil
     self.humanoid = nil
     self.rig_type = "R6"
@@ -114,13 +117,13 @@ function esp_object.new(player)
 end
 
 function esp_object:cache_character()
-    local char = self.player.Character
-    if not char then return end
+    local character = self.player.Character
+    if not character then return end
     
-    self.char = char
-    self.root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
-    self.humanoid = char:FindFirstChild("Humanoid")
-    self.rig_type = char:FindFirstChild("UpperTorso") and "R15" or "R6" -- hacky way to get rig type
+    self.character = character
+    self.root = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
+    self.humanoid = character:FindFirstChild("Humanoid")
+    self.rig_type = character:FindFirstChild("UpperTorso") and "R15" or "R6" -- hacky way to get rig type
     
     if self.rig_type == "R15" then
         self:resize_skeleton_pool(#R15_LINKS)
@@ -173,7 +176,7 @@ function esp_object:set_visible(state)
 end
 
 function esp_object:update()
-    if not self.char or not self.root or not self.humanoid or self.humanoid.Health <= 0 then
+    if not self.character or not self.root or not self.humanoid or self.humanoid.Health <= 0 then
         self:set_visible(false)
         return
     end
@@ -195,7 +198,7 @@ function esp_object:update()
     local x, y = pos.X - width / 2, pos.Y - height / 2
     
     local render_color = library.config.team_color and self.player.TeamColor.Color or library.config.box_color
-    local skel_color = library.config.team_color and self.player.TeamColor.Color or library.config.skeleton_color
+    local skeleton_color = library.config.team_color and self.player.TeamColor.Color or library.config.skeleton_color
 
     self:set_visible(true)
 
@@ -242,8 +245,8 @@ function esp_object:update()
     if library.config.skeleton then
         local links = self.rig_type == "R15" and R15_LINKS or R6_LINKS
         for i, link in ipairs(links) do
-            local p1 = self.char:FindFirstChild(link[1])
-            local p2 = self.char:FindFirstChild(link[2])
+            local p1 = self.character:FindFirstChild(link[1])
+            local p2 = self.character:FindFirstChild(link[2])
             local line = self.drawings.skeleton[i]
             
             if p1 and p2 and line then
@@ -253,7 +256,7 @@ function esp_object:update()
                 if os1 and os2 then
                     line.From = Vector2.new(v1.X, v1.Y)
                     line.To = Vector2.new(v2.X, v2.Y)
-                    line.Color = skel_color
+                    line.Color = skeleton_color
                     line.Visible = true
                 else
                     line.Visible = false
@@ -275,7 +278,6 @@ function manager.add_player(player)
     manager.entities[player] = esp_object.new(player)
     
     player.CharacterAdded:Connect(function()
-        task.wait(0.1)
         if manager.entities[player] then
             manager.entities[player]:cache_character()
         end
@@ -296,12 +298,12 @@ function manager.remove_player(player)
 end
 
 -- connections
-for _, p in ipairs(players:GetPlayers()) do
-    if p ~= local_player then manager.add_player(p) end
+for _, player in pairs(players:GetPlayers()) do
+    if player ~= local_player then manager.add_player(player) end
 end
 
-players.PlayerAdded:Connect(function(p)
-    if p ~= local_player then manager.add_player(p) end
+players.PlayerAdded:Connect(function(player)
+    if player ~= local_player then manager.add_player(player) end
 end)
 
 players.PlayerRemoving:Connect(manager.remove_player)

@@ -5,6 +5,7 @@ local library = {}
 library.config = {
     enabled = true,
     team_check = false,
+    team_color = true,
     box = true,
     box_color = Color3.fromRGB(255, 255, 255),
     box_outline = true,
@@ -18,17 +19,15 @@ library.config = {
     skeleton_color = Color3.fromRGB(255, 255, 255),
     font = 2,
     text_size = 13,
-    max_distance = 2500 -- in studs
+    max_distance = 2500
 }
 
--- services & cache
 local players = game:GetService("Players")
 local run_service = game:GetService("RunService")
 local camera = workspace.CurrentCamera
 local local_player = players.LocalPlayer
 local world_to_viewport_point = camera.WorldToViewportPoint
 
--- Object Pool
 local pool = {}
 pool.cache = {
     Square = {},
@@ -51,7 +50,6 @@ function pool.release(obj, type_name)
     table.insert(pool.cache[type_name], obj)
 end
 
--- constants
 local R15_LINKS = {
     {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "LeftUpperLeg"},
     {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}, {"LowerTorso", "RightUpperLeg"},
@@ -65,7 +63,6 @@ local R6_LINKS = {
     {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
 }
 
--- esp class
 local esp_object = {}
 esp_object.__index = esp_object
 
@@ -121,7 +118,7 @@ function esp_object:cache_character()
     self.char = char
     self.root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
     self.humanoid = char:FindFirstChild("Humanoid")
-    self.rig_type = char:FindFirstChild("UpperTorso") and "R15" or "R6" -- a hacky way to get player's rig type
+    self.rig_type = char:FindFirstChild("UpperTorso") and "R15" or "R6"
     
     if self.rig_type == "R15" then
         self:resize_skeleton_pool(#R15_LINKS)
@@ -195,12 +192,15 @@ function esp_object:update()
     local width, height = 2 * scale, 3 * scale
     local x, y = pos.X - width / 2, pos.Y - height / 2
     
+    local render_color = library.config.team_color and self.player.TeamColor.Color or library.config.box_color
+    local skel_color = library.config.team_color and self.player.TeamColor.Color or library.config.skeleton_color
+
     self:set_visible(true)
 
     if library.config.box then
         self.drawings.box.Size = Vector2.new(width, height)
         self.drawings.box.Position = Vector2.new(x, y)
-        self.drawings.box.Color = library.config.box_color
+        self.drawings.box.Color = render_color
         
         if library.config.box_outline then
             self.drawings.box_outline.Size = Vector2.new(width, height)
@@ -251,7 +251,7 @@ function esp_object:update()
                 if os1 and os2 then
                     line.From = Vector2.new(v1.X, v1.Y)
                     line.To = Vector2.new(v2.X, v2.Y)
-                    line.Color = library.config.skeleton_color
+                    line.Color = skel_color
                     line.Visible = true
                 else
                     line.Visible = false
@@ -263,7 +263,6 @@ function esp_object:update()
     end
 end
 
--- manager
 local manager = {
     entities = {}
 }
@@ -278,6 +277,12 @@ function manager.add_player(player)
             manager.entities[player]:cache_character()
         end
     end)
+
+    player:GetPropertyChangedSignal("Team"):Connect(function()
+        if manager.entities[player] then
+            manager.entities[player]:update()
+        end
+    end)
 end
 
 function manager.remove_player(player)
@@ -287,7 +292,6 @@ function manager.remove_player(player)
     end
 end
 
--- connections
 for _, p in ipairs(players:GetPlayers()) do
     if p ~= local_player then manager.add_player(p) end
 end
@@ -298,7 +302,7 @@ end)
 
 players.PlayerRemoving:Connect(manager.remove_player)
 
-run_service:BindToRenderStep("ESP_Update", Enum.RenderPriority.Camera.Value + 1, function()
+run_service.BindToRenderStep("esp_update", Enum.RenderPriority.Camera.Value + 1, function()
     if not library.config.enabled then 
         for _, obj in pairs(manager.entities) do obj:set_visible(false) end
         return 

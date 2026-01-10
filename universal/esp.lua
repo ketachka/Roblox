@@ -50,6 +50,7 @@ function pool.release(obj, type_name)
     table.insert(pool.cache[type_name], obj)
 end
 
+-- constants
 local R15_LINKS = {
     {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "LeftUpperLeg"},
     {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}, {"LowerTorso", "RightUpperLeg"},
@@ -63,6 +64,7 @@ local R6_LINKS = {
     {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
 }
 
+-- esp constructor
 local esp_object = {}
 esp_object.__index = esp_object
 
@@ -118,7 +120,7 @@ function esp_object:cache_character()
     self.char = char
     self.root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
     self.humanoid = char:FindFirstChild("Humanoid")
-    self.rig_type = char:FindFirstChild("UpperTorso") and "R15" or "R6"
+    self.rig_type = char:FindFirstChild("UpperTorso") and "R15" or "R6" -- hacky way to get rig type
     
     if self.rig_type == "R15" then
         self:resize_skeleton_pool(#R15_LINKS)
@@ -263,6 +265,7 @@ function esp_object:update()
     end
 end
 
+-- esp manager
 local manager = {
     entities = {}
 }
@@ -292,6 +295,7 @@ function manager.remove_player(player)
     end
 end
 
+-- connections
 for _, p in ipairs(players:GetPlayers()) do
     if p ~= local_player then manager.add_player(p) end
 end
@@ -302,7 +306,7 @@ end)
 
 players.PlayerRemoving:Connect(manager.remove_player)
 
-run_service.BindToRenderStep("esp_update", Enum.RenderPriority.Camera.Value + 1, function()
+run_service:BindToRenderStep("esp_update", Enum.RenderPriority.Camera.Value + 1, function()
     if not library.config.enabled then 
         for _, obj in pairs(manager.entities) do obj:set_visible(false) end
         return 
